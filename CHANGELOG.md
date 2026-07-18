@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Fully disable Sparkle for custom builds** — setting the local `HermesDisableUpdater` preference to `true` prevents Sparkle from being initialized at launch and removes the **Check for Updates…** menu item. This is distinct from Sparkle's `SUEnableAutomaticChecks`, which disables scheduled checks but still starts the updater and can surface initialization errors in custom/ad-hoc builds.
+
 ### Fixed
 - **Escape no longer crashes the app on macOS 26** — WebKit forwards an unhandled Escape key through AppKit's responder chain as `cancelOperation:`. `BrowserWindowController` handled that action for the find bar, but when the bar was closed it called `super.cancelOperation`; `NSWindowController` has no Objective-C implementation to invoke, causing an unrecognized-selector abort. Escape now closes the find bar when visible and is otherwise safely consumed.
 

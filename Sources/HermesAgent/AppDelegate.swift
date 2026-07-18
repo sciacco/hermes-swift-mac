@@ -41,7 +41,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     var errorWindow: ErrorWindowController?
     var preferencesWindow: PreferencesWindowController?
-    var updaterController: SPUStandardUpdaterController!
+    /// Optional so custom builds can disable Sparkle before it starts. Unlike
+    /// SUEnableAutomaticChecks, this prevents updater initialization entirely.
+    var updaterController: SPUStandardUpdaterController?
+    static let updaterDisabledKey = "HermesDisableUpdater"
 
     /// The appearance currently in effect for all Hermes windows. Updated by
     /// BrowserWindowController's theme bridge each time the web UI reports a new
@@ -224,12 +227,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             "globalHotkeyEnabled": true,
         ])
 
-        // Initialize Sparkle updater — feed URL comes from SUFeedURL in Info.plist
-        updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
-            updaterDelegate: nil,
-            userDriverDelegate: nil
-        )
+        // Initialize Sparkle unless this installation explicitly disabled the
+        // updater. SUEnableAutomaticChecks only disables scheduled checks; it
+        // still starts Sparkle, which can show a startup error in custom/ad-hoc
+        // builds. This separate preference skips initialization entirely.
+        if !UserDefaults.standard.bool(forKey: Self.updaterDisabledKey) {
+            updaterController = SPUStandardUpdaterController(
+                startingUpdater: true,
+                updaterDelegate: nil,
+                userDriverDelegate: nil
+            )
+        }
 
         setupMenu()
         seedDefaultsIfNeeded()
@@ -670,11 +678,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(
             withTitle: "About \(appTitle)",
             action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
-        appMenu.addItem(.separator())
-        appMenu.addItem(
-            withTitle: "Check for Updates…",
-            action: #selector(checkForUpdates),
-            keyEquivalent: "")
+        if updaterController != nil {
+            appMenu.addItem(.separator())
+            appMenu.addItem(
+                withTitle: "Check for Updates…",
+                action: #selector(checkForUpdates),
+                keyEquivalent: "")
+        }
         appMenu.addItem(.separator())
         appMenu.addItem(
             withTitle: "Preferences…", action: #selector(openPreferences), keyEquivalent: ",")
@@ -799,7 +809,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func checkForUpdates() {
-        updaterController.checkForUpdates(nil)
+        updaterController?.checkForUpdates(nil)
     }
 
     // MARK: - Show window (mirrors global hotkey Cmd+Shift+H, fix #35)
