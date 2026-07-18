@@ -57,4 +57,26 @@ final class LaunchBehaviorTests: XCTestCase {
         // Verify manually: resize the window, quit, relaunch — the window should open at the same size.
         XCTAssertTrue(true, "See the full documentation comment above for what this guards.")
     }
+
+    /// An unhandled Escape in WKWebView is forwarded through AppKit's responder
+    /// chain as `cancelOperation:`. BrowserWindowController overrides that action
+    /// to dismiss its find bar, but must not call `super.cancelOperation`: on
+    /// macOS 26 NSWindowController has no Objective-C implementation behind the
+    /// imported responder action, so the super call aborts with an unrecognized
+    /// selector. The source-level assertion is intentional because the test target
+    /// does not link the executable target or instantiate AppKit windows.
+    func testCancelOperationDoesNotCallSuper() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let controllerURL = repositoryRoot
+            .appendingPathComponent("Sources/HermesAgent/BrowserWindowController.swift")
+        let source = try String(contentsOf: controllerURL, encoding: .utf8)
+
+        XCTAssertFalse(
+            source.contains("super.cancelOperation("),
+            "Calling super.cancelOperation crashes on macOS 26 when Escape comes from WKWebView."
+        )
+    }
 }
