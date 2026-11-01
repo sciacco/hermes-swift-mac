@@ -1,12 +1,17 @@
 # Changelog
 
-## Unreleased
+## [Unreleased]
 
 ### Added
 - **Fully disable Sparkle for custom builds** — setting the local `HermesDisableUpdater` preference to `true` prevents Sparkle from being initialized at launch and removes the **Check for Updates…** menu item. This is distinct from Sparkle's `SUEnableAutomaticChecks`, which disables scheduled checks but still starts the updater and can surface initialization errors in custom/ad-hoc builds.
 
 ### Fixed
-- **Escape no longer crashes the app on macOS 26** — WebKit forwards an unhandled Escape key through AppKit's responder chain as `cancelOperation:`. `BrowserWindowController` handled that action for the find bar, but when the bar was closed it called `super.cancelOperation`; `NSWindowController` has no Objective-C implementation to invoke, causing an unrecognized-selector abort. Escape now closes the find bar when visible and is otherwise safely consumed.
+- **Long conversations no longer enter WebKit's virtual-measurement retry loop** — the macOS client now installs a document-start compatibility guard for the upstream transcript-virtualization bug tracked by hermes-webui issue #6654 (fixed upstream by PR #6717, first shipped in `exp-v0.52.374`). When the loaded scheduler still contains the faulty per-window retry reset, virtualization uses WebUI's supported non-virtualized fallback inside WKWebView only. Browser and iOS clients remain unchanged, and virtualization automatically resumes in the Mac client once the server supplies the corrected scheduler.
+
+## [v1.7.3] — 2026-07-18
+
+### Fixed
+- **Escape no longer hides the window — PR #93** — pressing Escape with the find bar closed could make the entire window vanish (the last-window close path hides via `orderOut` rather than closing, so the whole app seemed to disappear). Root cause: `cancelOperation(_:)` called `super.cancelOperation` on the no-find-bar path, but that NSResponder key-binding method is declared without an implementation — every bare Escape threw an unrecognized-selector exception inside WebKit's command dispatch (`executeSavedCommandBySelector`), caught by AppKit's event-loop guard but leaving dispatch in an undefined state that could bubble into `performClose`. Escape is now swallowed when the find bar is closed; Escape-closes-find-bar behavior is unchanged. Contributed by @roryford.
 
 ## [v1.7.2] — 2026-07-11
 
